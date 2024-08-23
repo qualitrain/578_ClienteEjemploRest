@@ -14,7 +14,10 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.client.RestTemplate;
 
-import jakarta.annotation.PostConstruct;
+import com.netflix.appinfo.InstanceInfo;
+import com.netflix.discovery.EurekaClient;
+import com.netflix.discovery.shared.Application;
+
 import mx.com.qtx.entidades.Saludo;
 
 @RestController
@@ -23,22 +26,41 @@ public class ApiWeb {
 	private static Logger log = LoggerFactory.getLogger(ApiWeb.class);
 	
 	@Autowired
+	private EurekaClient eurekaCte;	
+	
+	@Autowired
 	private RestTemplate restTemplate;
 	
 	@Autowired
 	private Environment env;
 	
-	private String urlProv = null;
+//	private String urlProv = null;
 	
-	@PostConstruct
-	public void inicializarUrlCte() {
-		this.urlProv = "http://" + env.getProperty("mx.com.qtx.prov01") 
-		              + ":" + env.getProperty("mx.com.qtx.prov01.port");
+//	@PostConstruct
+//	public void inicializarUrlCte() {
+//		this.urlProv = "http://" + env.getProperty("mx.com.qtx.prov01") 
+//		              + ":" + env.getProperty("mx.com.qtx.prov01.port");
+//	}
+	
+	private String getUrlProv(){
+		String urlCte = "http://";
+		String idServicioCte = env.getProperty("mx.com.qtx.prov01");
+		Application aplicacion = this.eurekaCte.getApplication(idServicioCte);
+		List<InstanceInfo> instanciasApp = aplicacion.getInstances();
+		if(instanciasApp.size() == 0) {
+			log.error("No hay instancias disponibles del servicio " + idServicioCte);
+			return null;
+		}
+		InstanceInfo instanciaDestino = instanciasApp.get(0);
+		urlCte += instanciaDestino.getHostName() 
+			      + ":"
+			      + instanciaDestino.getPort();
+		return urlCte;
 	}
 	
 	@GetMapping(path = "/testServicio", produces = MediaType.APPLICATION_JSON_VALUE)
 	public Saludo probarServicio() {
-		String Url =  this.urlProv + "/saludo/json/{nombre}";
+		String Url =  this.getUrlProv() + "/saludo/json/{nombre}";
 		
 		Saludo saludo =this.restTemplate.getForObject(Url, Saludo.class, "Jimena");
 		
@@ -49,7 +71,7 @@ public class ApiWeb {
 	@GetMapping(path = "/testArreglo", produces = MediaType.APPLICATION_JSON_VALUE)
 	public List<Saludo> probarGetArreglo() {
 		
-		String Url =  this.urlProv + "/saludos";
+		String Url =  this.getUrlProv() + "/saludos";
 		
 		Saludo[] saludos =this.restTemplate.getForObject(Url, Saludo[].class);
 		
@@ -62,7 +84,7 @@ public class ApiWeb {
 	public List<Saludo> probarGetArregloErr() {
 		
 		List<Saludo> listSaludos = null;
-		String Url =  this.urlProv + "/saludos";
+		String Url =  this.getUrlProv() + "/saludos";
 		try {
 			Saludo[] saludos =this.restTemplate.getForObject(Url, Saludo[].class);
 			listSaludos = Arrays.asList(saludos);		
