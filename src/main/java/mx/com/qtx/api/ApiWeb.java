@@ -14,6 +14,8 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.client.RestTemplate;
 
+import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import mx.com.qtx.entidades.Saludo;
 
 @RestController
@@ -73,6 +75,33 @@ public class ApiWeb {
 			listSaludos.add(saludoErr);
 		}		
 		return listSaludos;
+	}
+	
+	@GetMapping(path = "/testCircuitBreaker", produces = MediaType.APPLICATION_JSON_VALUE)
+	@CircuitBreaker(name="MiCircuitBreaker", fallbackMethod = "fallback")
+	public List<Saludo> probarGetArregloInestable() {
+		log.trace("probarGetArregloInestable()");
+		
+		String Url =  this.getUrlProv() + "/saludos";
+		
+		Saludo[] saludos =this.restTemplate.getForObject(Url, Saludo[].class);
+		
+		List<Saludo> listSaludos = Arrays.asList(saludos);
+		log.debug("objeto recuperado de " + Url + " es " + listSaludos);
+		return listSaludos;
+	}
+	
+	public List<Saludo> fallback(CallNotPermittedException e) {
+		log.trace("fallback()");
+		return List.of(new Saludo("Lo siento","servicio lento",""));
+	}
+	
+	@ExceptionHandler
+	public String manejarInvocacionFallida(CallNotPermittedException cnpEx) {
+		String error = cnpEx.getClass().getName() + ":" + cnpEx.getMessage();
+		error += " causado por " + cnpEx.getCausingCircuitBreakerName();
+		return error;		
+		
 	}
 	
 	@ExceptionHandler
