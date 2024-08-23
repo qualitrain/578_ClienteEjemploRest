@@ -14,10 +14,6 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.client.RestTemplate;
 
-import com.netflix.appinfo.InstanceInfo;
-import com.netflix.discovery.EurekaClient;
-import com.netflix.discovery.shared.Application;
-
 import mx.com.qtx.entidades.Saludo;
 
 @RestController
@@ -25,8 +21,8 @@ public class ApiWeb {
 	
 	private static Logger log = LoggerFactory.getLogger(ApiWeb.class);
 	
-	@Autowired
-	private EurekaClient eurekaCte;	
+//	@Autowired
+//	private EurekaClient eurekaCte;	
 	
 	@Autowired
 	private RestTemplate restTemplate;
@@ -34,28 +30,10 @@ public class ApiWeb {
 	@Autowired
 	private Environment env;
 	
-//	private String urlProv = null;
-	
-//	@PostConstruct
-//	public void inicializarUrlCte() {
-//		this.urlProv = "http://" + env.getProperty("mx.com.qtx.prov01") 
-//		              + ":" + env.getProperty("mx.com.qtx.prov01.port");
-//	}
-	
 	private String getUrlProv(){
-		String urlCte = "http://";
-		String idServicioCte = env.getProperty("mx.com.qtx.prov01");
-		Application aplicacion = this.eurekaCte.getApplication(idServicioCte);
-		List<InstanceInfo> instanciasApp = aplicacion.getInstances();
-		if(instanciasApp.size() == 0) {
-			log.error("No hay instancias disponibles del servicio " + idServicioCte);
-			return null;
-		}
-		InstanceInfo instanciaDestino = instanciasApp.get(0);
-		urlCte += instanciaDestino.getHostName() 
-			      + ":"
-			      + instanciaDestino.getPort();
-		return urlCte;
+		String idServicioProv = env.getProperty("mx.com.qtx.prov01");
+		String urlProv = "http://" + idServicioProv;
+		return urlProv;
 	}
 	
 	@GetMapping(path = "/testServicio", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -100,6 +78,9 @@ public class ApiWeb {
 	@ExceptionHandler
 	public String manejarError(Exception ex) {
 		String error = ex.getClass().getName() + ":" + ex.getMessage();
+		if(ex.getCause() != null) {
+			error += " causado por " + ex.getCause().getClass().getName() + ":" + ex.getCause().getMessage();
+		}
 		return error;		
 	}
 }
